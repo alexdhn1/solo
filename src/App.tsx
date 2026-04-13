@@ -61,9 +61,9 @@ function App() {
           <h1 className="mb-2 text-3xl font-black [text-shadow:0_2px_12px_rgba(0,0,0,0.6)]">
             Week-end duo en cavale
           </h1>
-          <p className="mx-auto max-w-md text-sm italic opacity-90 [text-shadow:0_1px_6px_rgba(0,0,0,0.5)]">
+          <h1 className="mb-2 text-3xl font-black [text-shadow:0_2px_12px_rgba(0,0,0,0.6)]">
             Quand le chat n'est pas la, les souris dansent.
-          </p>
+          </h1>
           <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-4 py-1.5 text-xs font-semibold backdrop-blur-md">
             📍 St-Georges-sur-Cher, maison calme et week-ends bien remplis
           </div>
