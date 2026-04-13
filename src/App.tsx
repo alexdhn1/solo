@@ -73,7 +73,7 @@ function App() {
           <img
             src={HERO_IMAGE.src}
             alt={HERO_IMAGE.alt}
-            className="h-[280px] w-full object-cover sm:h-[340px]"
+            className="h-[290px] w-full object-cover sm:h-[360px]"
             style={{ objectPosition: 'center 22%' }}
             loading="eager"
           />
