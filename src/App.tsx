@@ -5,7 +5,7 @@ import { SoloForm } from '@/features/solo-booking/components/SoloForm'
 import type { SoloReservationPayload, SoloWeekendSlot } from '@/lib/types'
 
 const HERO_IMAGE = {
-  src: 'https://lh3.googleusercontent.com/d/1ca41CaGPKOux1MGzcxf2Zf5Xc6vl_rIc',
+  src: 'https://lh3.googleusercontent.com/d/11_ThPr1ZzGxfTZAqSpA5p2nmOf4Qm9ix',
   alt: 'Date solo a St-Georges-sur-Cher',
 }
 
@@ -78,12 +78,17 @@ function App() {
           />
           <div className="grid gap-3 bg-[linear-gradient(180deg,rgba(255,248,240,0.96),rgba(255,252,249,0.94))] px-5 py-5 text-left sm:px-6">
             <div className="inline-flex w-fit items-center rounded-full bg-rose-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-rose-700">
-              programme semi romantique
+              Absence de supervision confirmée
             </div>
-            <h2 className="text-xl font-black text-stone-900">Un petit week-end simple, tranquille, a deux</h2>
+            <h2 className="text-xl font-black text-stone-900">Un petit week-end simple, light en tete-à-tête </h2>
             <p className="text-sm leading-relaxed text-stone-700">
-              L'idee est simple : bien manger, discuter, se poser, aller marcher un peu et profiter de la maison.
-              Pas besoin d'en faire trop. Juste un bon moment a deux, loin du bruit et des plannings.
+              L'idee est simple : Les week-ends où Jenna travaille, la maison est libre pour recevoir une ou 2 personne a la fois.
+              L'idee n'est pas de faire un gros rassemblement. 
+              C'est plutot un moment simple, au calme, retrouvaille romantique,
+              avec possibilite de rester jusqu au lundi-mardi en teletravail si ca t arrange.
+              Detente, profiter de la maison et de son jardin, 
+              faire une balade dans les environs, ou ne rien faire du tout. 
+              Programme allégé 
             </p>
           </div>
         </section>

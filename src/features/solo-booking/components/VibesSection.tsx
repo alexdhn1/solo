@@ -25,9 +25,7 @@ export function VibesSection() {
         🎯 Le concept
       </h3>
       <p className="mb-4 text-sm leading-relaxed text-gray-600">
-        Les week-ends ou Jenna travaille, la maison est libre pour recevoir une personne a la fois.
-        L'idee n'est pas de faire un gros rassemblement. C'est plutot un moment simple a deux, au calme,
-        du <strong>vendredi au dimanche</strong>, avec possibilite de rester jusqu au{' '}
+       Alors vient OKLM du <strong>vendredi au dimanche</strong>, avec possibilite de rester jusqu au{' '}
         <strong>lundi-mardi en teletravail</strong> si ca t arrange.
       </p>
 
