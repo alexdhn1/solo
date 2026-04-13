@@ -82,21 +82,21 @@ function App() {
               Absence de supervision confirmée
             </div>
             <h2 className="text-xl font-black text-stone-900">Un petit week-end en tete-à-tête </h2>
-            <p className="text-sm leading-relaxed text-stone-700">
-         Simple est l’idée : maison dispo quand Jenna bosse à côté,/n
-À une ou deux personnes, tranquille, sans foule agitée./n
+            <p className="text-sm leading-relaxed text-stone-700 whitespace-pre-line">
+            {`Simple est l’idée : maison dispo quand Jenna bosse à côté,
+            À une ou deux personnes, tranquille, sans foule agitée.
 
-Pas de grosse soirée, mais un moment posé,/n
-Romantique ou chill, juste pour se retrouver./n
+            Pas de grosse soirée, mais un moment posé,
+            Romantique ou chill, juste pour se retrouver.
 
-Rester tu peux, lundi ou mardi inclus,/n
-Télétravailler au calme, sans stress ni chahut./n
+            Rester tu peux, lundi ou mardi inclus,
+            Télétravailler au calme, sans stress ni chahut.
 
-Maison et jardin, profiter tu feras,/n
-Balade ou rien du tout, comme tu voudras./n
+            Maison et jardin, profiter tu feras,
+            Balade ou rien du tout, comme tu voudras.
 
-Programme léger, esprit libéré,/n
-Venir, se poser… comme chez Mémé/n
+            Programme léger, esprit libéré,
+            Venir, se poser… et juste kiffer.`}
             </p>
           </div>
         </section>
