@@ -62,11 +62,10 @@ function App() {
             Week-end duo en cavale
           </h1>
           <p className="mx-auto max-w-md text-sm italic opacity-90 [text-shadow:0_1px_6px_rgba(0,0,0,0.5)]">
-            Quand le chat n'est pas la, les souris se calent un mini date de campagne, entre verres bien remplis,
-            vannes douteuses et faux grands sentiments.
+            Quand le chat n'est pas la, les souris dansent.
           </p>
           <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-4 py-1.5 text-xs font-semibold backdrop-blur-md">
-            📍 St-Georges-sur-Cher, quartier general des tete-a-tete approximatifs
+            📍 St-Georges-sur-Cher, maison calme et week-ends bien remplis
           </div>
         </header>
 
@@ -81,11 +80,10 @@ function App() {
             <div className="inline-flex w-fit items-center rounded-full bg-rose-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-rose-700">
               programme semi romantique
             </div>
-            <h2 className="text-xl font-black text-stone-900">Une parenthese tres serieuse, prise a la legere</h2>
+            <h2 className="text-xl font-black text-stone-900">Un petit week-end simple, tranquille, a deux</h2>
             <p className="text-sm leading-relaxed text-stone-700">
-              Ici on ne vend pas un sejour bien-etre. On reserve surtout un week-end ou deux personnes se
-              regardent en disant "on fait simple" puis finissent avec un apero de 3 heures, un diner trop soigne
-              et une promenade qui a l'air sortie d'un film tres moyen mais tres attachant.
+              L'idee est simple : bien manger, discuter, se poser, aller marcher un peu et profiter de la maison.
+              Pas besoin d'en faire trop. Juste un bon moment a deux, loin du bruit et des plannings.
             </p>
           </div>
         </section>
@@ -95,12 +93,12 @@ function App() {
 
           <div className="my-6 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
 
-          <h2 className="mb-4 text-lg font-bold text-gray-900">📅 Verrouille ton petit week-end en duo</h2>
+          <h2 className="mb-4 text-lg font-bold text-gray-900">📅 Reserve ton week-end</h2>
 
           {loading && (
             <div className="py-8 text-center text-gray-500">
               <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-emerald-600" />
-              On verifie que la fenetre romantico-logistique est bien libre…
+              On verifie les dates disponibles…
             </div>
           )}
 
@@ -110,7 +108,7 @@ function App() {
 
           {!loading && !submitted && weekends.length === 0 && !feedback && (
             <p className="py-4 text-center text-sm italic text-gray-400">
-              Aucun creneau discret disponible pour le moment. Le destin fait le difficile.
+              Aucun week-end disponible pour le moment.
             </p>
           )}
 

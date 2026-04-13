@@ -1,12 +1,12 @@
 const VIBES = [
-  { emoji: '🥂', title: 'Apero de prelude', desc: 'On commence par un verre rapide, puis mysterieuxement le soleil se couche.' },
-  { emoji: '🍝', title: 'Diner presque tendre', desc: 'Quelqu un cuisine, l autre goute, personne n avoue que c est tres touchant.' },
-  { emoji: '🚶', title: 'Promenade scenario B', desc: 'On sort marcher comme si on etait des gens equilibres, c est tres convaincant.' },
-  { emoji: '🛋️', title: 'Canape cinematographique', desc: 'Film discutable, commentaires excellents, couverture eventuellement partagee.' },
-  { emoji: '💻', title: 'Teletravail cote a cote', desc: 'Lundi-mardi si besoin, avec fibre solide et concentration tres negociable.' },
-  { emoji: '🎲', title: 'Jeux et mauvaise foi', desc: 'Les regles deviennent soudain tres floues des que quelqu un perd avec panache.' },
-  { emoji: '🍷', title: 'Grandes declarations inutiles', desc: 'On se promet des projets absurdes qu on n executera probablement jamais.' },
-  { emoji: '🌙', title: 'Silence premium', desc: 'Le luxe rare de n avoir rien a prouver et pourtant beaucoup a raconter.' },
+  { emoji: '🥂', title: 'Apero', desc: 'On arrive, on ouvre quelque chose, et la soiree commence bien.' },
+  { emoji: '🍝', title: 'Bon diner', desc: 'On mange bien, on prend le temps, et c est deja beaucoup.' },
+  { emoji: '🚶', title: 'Balade', desc: 'Un tour dehors pour prendre l air et discuter tranquille.' },
+  { emoji: '🛋️', title: 'Canape', desc: 'Un film, une serie, ou juste parler jusqu a tard.' },
+  { emoji: '💻', title: 'Teletravail possible', desc: 'Si besoin, tu peux rester lundi ou mardi et bosser depuis la maison.' },
+  { emoji: '🎲', title: 'Jeux', desc: 'Quelques parties, un peu de mauvaise foi, rien d anormal.' },
+  { emoji: '🍷', title: 'Bonne ambiance', desc: 'Le but, c est surtout de passer un vrai bon moment.' },
+  { emoji: '🌙', title: 'Temps calme', desc: 'Pas de programme force. On profite, c est tout.' },
 ]
 
 const TAGS = [
@@ -25,10 +25,10 @@ export function VibesSection() {
         🎯 Le concept
       </h3>
       <p className="mb-4 text-sm leading-relaxed text-gray-600">
-        Quand Jenna travaille, la maison passe en mode parenthese confidentielle. Pas de grand groupe, pas de
-        logistique de bande, pas de debat infini sur qui amene quoi. Juste deux personnes, un decor de campagne,
-        une ambiance un peu trop soignee pour etre tout a fait innocente et la possibilite de tirer le plaisir du{' '}
-        <strong>vendredi au dimanche</strong> ou de glisser jusqu au <strong>lundi-mardi en teletravail</strong>.
+        Les week-ends ou Jenna travaille, la maison est libre pour recevoir une personne a la fois.
+        L'idee n'est pas de faire un gros rassemblement. C'est plutot un moment simple a deux, au calme,
+        du <strong>vendredi au dimanche</strong>, avec possibilite de rester jusqu au{' '}
+        <strong>lundi-mardi en teletravail</strong> si ca t arrange.
       </p>
 
       <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -50,8 +50,8 @@ export function VibesSection() {
         🛏️ Base arriere
       </h3>
       <div className="mb-5 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm leading-relaxed text-amber-900">
-        <strong>Chambre d'amis</strong> avec lit double, draps propres, serviettes pretes et zero theatre logistique.
-        Tu poses ton sac, tu souffles deux secondes, et le faux week-end romantique peut commencer tres serieusement.
+        <strong>Chambre d'amis</strong> avec lit double, draps propres et serviettes pretes.
+        Tu poses ton sac et c'est regle.
       </div>
 
       <div className="flex flex-wrap gap-2">
