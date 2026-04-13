@@ -74,7 +74,7 @@ function App() {
             src={HERO_IMAGE.src}
             alt={HERO_IMAGE.alt}
             className="h-[260px] w-full object-cover sm:h-[320px]"
-            style={{ objectPosition: 'center 22%' }}
+            style={{ objectPosition: 'center 22%', transform: 'scale(0.985)', transformOrigin: 'center' }}
             loading="eager"
           />
           <div className="grid gap-3 bg-[linear-gradient(180deg,rgba(255,248,240,0.96),rgba(255,252,249,0.94))] px-5 py-5 text-left sm:px-6">
