@@ -83,20 +83,20 @@ function App() {
             </div>
             <h2 className="text-xl font-black text-stone-900">Un petit week-end en tete-à-tête </h2>
             <p className="text-sm leading-relaxed text-stone-700">
-         Simple est l’idée : maison dispo quand Jenna bosse à côté,
-À une ou deux personnes, tranquille, sans foule agitée.
+         Simple est l’idée : maison dispo quand Jenna bosse à côté,/n
+À une ou deux personnes, tranquille, sans foule agitée./n
 
-Pas de grosse soirée, mais un moment posé,
-Romantique ou chill, juste pour se retrouver.
+Pas de grosse soirée, mais un moment posé,/n
+Romantique ou chill, juste pour se retrouver./n
 
-Rester tu peux, lundi ou mardi inclus,
-Télétravailler au calme, sans stress ni chahut.
+Rester tu peux, lundi ou mardi inclus,/n
+Télétravailler au calme, sans stress ni chahut./n
 
-Maison et jardin, profiter tu feras,
-Balade ou rien du tout, comme tu voudras.
+Maison et jardin, profiter tu feras,/n
+Balade ou rien du tout, comme tu voudras./n
 
-Programme léger, esprit libéré,
-Venir, se poser… comme chez Mémé
+Programme léger, esprit libéré,/n
+Venir, se poser… comme chez Mémé/n
             </p>
           </div>
         </section>
