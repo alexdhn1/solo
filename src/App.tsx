@@ -1,31 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getSoloWeekends, submitSoloReservation } from '@/lib/api/client'
-import type { SoloReservationPayload, SoloWeekendSlot } from '@/lib/types'
-import { Carousel } from '@/features/solo-booking/components/Carousel'
 import { VibesSection } from '@/features/solo-booking/components/VibesSection'
 import { SoloForm } from '@/features/solo-booking/components/SoloForm'
+import type { SoloReservationPayload, SoloWeekendSlot } from '@/lib/types'
 
-const MAISON_IMAGES = [
-  { src: 'https://lh3.googleusercontent.com/d/1ww1sXxwroIMyhaxitNUeyieSDe7Ro8-q', alt: 'Maison' },
-  { src: 'https://lh3.googleusercontent.com/d/1B_GweVVptMLvmHzCFCAguePjCRlAJlbl', alt: 'Salon' },
-  { src: 'https://lh3.googleusercontent.com/d/12SwBocYi_hgqaCNX2QGrQuZqsh1HUD0S', alt: "Chambre d'amis" },
-  { src: 'https://lh3.googleusercontent.com/d/1zPqKahiTnp0hVf8V6mvbKP6AkgWP0Aed', alt: 'Poutres apparentes' },
-  { src: 'https://lh3.googleusercontent.com/d/1aturEspvc_JoLtxV60rzQnGDDdlO_mG3', alt: 'Cuisine' },
-  { src: 'https://lh3.googleusercontent.com/d/1uvSh_dqIu5VEnez06B1sT_88kGCPIpxZ', alt: 'Grosse ambiance' },
-  { src: 'https://lh3.googleusercontent.com/d/1MPY5wOs-Dh-er5A8zTwM5ffie7LKk1IH', alt: 'Santé !' },
-  { src: 'https://lh3.googleusercontent.com/d/1I9gRwzMF46EQ5BAjP8kIlhD04fuDv_N6', alt: 'Système son' },
-]
+const HERO_IMAGE = {
+  src: 'https://lh3.googleusercontent.com/d/1ca41CaGPKOux1MGzcxf2Zf5Xc6vl_rIc',
+  alt: 'Date solo a St-Georges-sur-Cher',
+}
 
-const NATURE_IMAGES = [
-  { src: 'https://lh3.googleusercontent.com/d/1TfzI8FVKhuwbKGgedlM1Uo3oeWciPQmE', alt: 'Baby tout mignon' },
-  { src: 'https://lh3.googleusercontent.com/d/1pMy0icd1eN7ovmOINAdDeDtqj5fx-nRl', alt: 'Château' },
-  { src: 'https://lh3.googleusercontent.com/d/1IZrx_SPZ6wZ2XkRnblO34FL4LwnOW-_N', alt: 'Se ressourcer' },
-  { src: 'https://lh3.googleusercontent.com/d/1QXhV9yC0SaEGxtcoOjmgB7ouM_fyauyR', alt: 'Profiter' },
-  { src: 'https://lh3.googleusercontent.com/d/1jKwFYgkimpB4fKZ4NHbUkYYG8ZiAna28', alt: 'Admirez' },
-  { src: 'https://lh3.googleusercontent.com/d/1tjuji36b7qtW0znNwraZcidEbfcOHL8d', alt: 'Nouveau dôme' },
-]
-
-const BG_IMAGES = [...MAISON_IMAGES.slice(0, 8), ...NATURE_IMAGES.slice(0, 6), ...MAISON_IMAGES.slice(0, 2)]
+const BACKGROUND_IMAGE = {
+  src: 'https://lh3.googleusercontent.com/d/1YFnKXzMpVPkGw1BuXcI6Xer9s3eL2p5n',
+  alt: '',
+}
 
 function App() {
   const [weekends, setWeekends] = useState<SoloWeekendSlot[]>([])
@@ -61,64 +48,59 @@ function App() {
 
   return (
     <>
-      {/* Background mosaic */}
-      <div className="fixed inset-0 z-0 grid grid-cols-2 auto-rows-[25vh] md:grid-cols-4">
-        {BG_IMAGES.map((img, i) => (
-          <img
-            key={i}
-            src={img.src}
-            alt=""
-            className="h-full w-full object-cover blur-[3px] brightness-[0.38] saturate-[0.8]"
-            loading="lazy"
-          />
-        ))}
-      </div>
-      <div className="fixed inset-0 z-[1] bg-gradient-to-b from-black/35 via-black/15 to-black/45" />
+      <div
+        className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${BACKGROUND_IMAGE.src})` }}
+        aria-hidden="true"
+      />
+      <div className="fixed inset-0 z-[1] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.16),transparent_32%),linear-gradient(180deg,rgba(8,17,14,0.28),rgba(8,17,14,0.74))]" />
 
-      {/* Page content */}
       <div className="relative z-[2] mx-auto max-w-[640px] px-4 py-8 pb-16">
-        {/* Hero */}
         <header className="mb-6 text-center text-white">
-          <span className="mb-3 block text-5xl drop-shadow-lg">🍷🤝🏡</span>
+          <span className="mb-3 block text-5xl drop-shadow-lg">🥂🏡✨</span>
           <h1 className="mb-2 text-3xl font-black [text-shadow:0_2px_12px_rgba(0,0,0,0.6)]">
-            Weekend Solo à St-Georges
+            Week-end duo en cavale
           </h1>
-          <p className="text-sm italic opacity-85 [text-shadow:0_1px_6px_rgba(0,0,0,0.5)]">
-            Un tête-à-tête entre potes, au calme en Touraine
+          <p className="mx-auto max-w-md text-sm italic opacity-90 [text-shadow:0_1px_6px_rgba(0,0,0,0.5)]">
+            Quand le chat n'est pas la, les souris se calent un mini date de campagne, entre verres bien remplis,
+            vannes douteuses et faux grands sentiments.
           </p>
           <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-4 py-1.5 text-xs font-semibold backdrop-blur-md">
-            📍 St-Georges-sur-Cher, Loir-et-Cher
+            📍 St-Georges-sur-Cher, quartier general des tete-a-tete approximatifs
           </div>
         </header>
 
-        {/* Carousels */}
-        <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div>
-            <div className="mb-1 text-center text-xs font-bold uppercase tracking-wider text-white/80">
-              🏠 La maison
+        <section className="mb-5 overflow-hidden rounded-[28px] border border-white/20 bg-white/10 shadow-[0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-sm">
+          <img
+            src={HERO_IMAGE.src}
+            alt={HERO_IMAGE.alt}
+            className="h-[260px] w-full object-cover sm:h-[320px]"
+            loading="eager"
+          />
+          <div className="grid gap-3 bg-[linear-gradient(180deg,rgba(255,248,240,0.96),rgba(255,252,249,0.94))] px-5 py-5 text-left sm:px-6">
+            <div className="inline-flex w-fit items-center rounded-full bg-rose-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-rose-700">
+              programme semi romantique
             </div>
-            <Carousel images={MAISON_IMAGES} autoplayMs={4000} />
+            <h2 className="text-xl font-black text-stone-900">Une parenthese tres serieuse, prise a la legere</h2>
+            <p className="text-sm leading-relaxed text-stone-700">
+              Ici on ne vend pas un sejour bien-etre. On reserve surtout un week-end ou deux personnes se
+              regardent en disant "on fait simple" puis finissent avec un apero de 3 heures, un diner trop soigne
+              et une promenade qui a l'air sortie d'un film tres moyen mais tres attachant.
+            </p>
           </div>
-          <div>
-            <div className="mb-1 text-center text-xs font-bold uppercase tracking-wider text-white/80">
-              🦁 Les alentours
-            </div>
-            <Carousel images={NATURE_IMAGES} autoplayMs={5400} />
-          </div>
-        </div>
+        </section>
 
-        {/* Card */}
         <div className="rounded-[22px] bg-white/95 p-6 shadow-[0_8px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl sm:p-7">
           <VibesSection />
 
           <div className="my-6 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
 
-          <h2 className="mb-4 text-lg font-bold text-gray-900">📅 Réserve ton weekend solo</h2>
+          <h2 className="mb-4 text-lg font-bold text-gray-900">📅 Verrouille ton petit week-end en duo</h2>
 
           {loading && (
             <div className="py-8 text-center text-gray-500">
               <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-emerald-600" />
-              Vérification des créneaux disponibles…
+              On verifie que la fenetre romantico-logistique est bien libre…
             </div>
           )}
 
@@ -128,7 +110,7 @@ function App() {
 
           {!loading && !submitted && weekends.length === 0 && !feedback && (
             <p className="py-4 text-center text-sm italic text-gray-400">
-              Aucun créneau solo disponible pour le moment… Reviens bientôt 😊
+              Aucun creneau discret disponible pour le moment. Le destin fait le difficile.
             </p>
           )}
 
