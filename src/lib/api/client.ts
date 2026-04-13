@@ -1,34 +1,31 @@
 import { apiEnv } from '@/lib/api/env'
-import type { ApiErrorPayload, PlanningPayload, WeekSession, WeekendReservation } from '@/lib/types'
+import type { ApiResponse, SoloReservationPayload, SoloWeekendSlot } from '@/lib/types'
 
-const buildHeaders = (): HeadersInit => ({
-  'Content-Type': 'text/plain;charset=utf-8',
-})
-
-const request = async <T>(body: Record<string, unknown>): Promise<T> => {
-  const response = await fetch(apiEnv.apiUrl, {
-    method: 'POST',
-    headers: buildHeaders(),
-    body: JSON.stringify(body),
-  })
-
-  const json = (await response.json()) as T | ApiErrorPayload
-  if (!response.ok) {
-    const payload = json as ApiErrorPayload
-    throw new Error(`${payload.code}: ${payload.message}`)
-  }
-
-  return json as T
+/**
+ * Fetch available solo weekends.
+ * GET {url}?action=getSoloWeekends → SoloWeekendSlot[]
+ * Already filters out dates blocked by group Reservations.
+ */
+export async function getSoloWeekends(): Promise<SoloWeekendSlot[]> {
+  const url = `${apiEnv.apiUrl}?action=getSoloWeekends`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`GET failed: ${res.status}`)
+  return res.json() as Promise<SoloWeekendSlot[]>
 }
 
-export const planningApi = {
-  getPlanning(fromDate: string, toDate: string) {
-    return request<PlanningPayload>({ action: 'getPlanning', fromDate, toDate })
-  },
-  reserveWeekend(input: Pick<WeekendReservation, 'weekendLabel' | 'guestName' | 'guestEmail' | 'message'>) {
-    return request<{ reservationId: string; status: 'reserved' }>({ action: 'reserveWeekend', ...input })
-  },
-  upsertWeekSession(input: Partial<WeekSession> & { date: string; startTime: string; endTime: string; guestName: string }) {
-    return request<{ sessionId: string; status: 'planned' | 'confirmed' }>({ action: 'upsertWeekSession', ...input })
-  },
+/**
+ * Submit a solo reservation.
+ * POST {url} with JSON body → ApiResponse
+ * Uses text/plain content-type to avoid CORS preflight with Apps Script.
+ */
+export async function submitSoloReservation(
+  payload: SoloReservationPayload,
+): Promise<ApiResponse> {
+  const res = await fetch(apiEnv.apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(`POST failed: ${res.status}`)
+  return res.json() as Promise<ApiResponse>
 }

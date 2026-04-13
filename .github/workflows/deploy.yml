@@ -32,6 +32,8 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          VITE_APPS_SCRIPT_URL: https://script.google.com/macros/s/AKfycbyKDmf63_7GZ1abR4-0whXz1ZvYYiSYckTgXCFKYgGuBAlhuZu21iKVGSCqXMZKUc8/exec
 
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
