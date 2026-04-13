@@ -1,20 +1,19 @@
 const VIBES = [
-  { emoji: '🥂', title: 'Apero', desc: 'On arrive, on ouvre quelque chose, et la soiree commence bien.' },
-  { emoji: '🍝', title: 'Bon diner', desc: 'On mange bien, on prend le temps, et c est deja beaucoup.' },
-  { emoji: '🚶', title: 'Balade', desc: 'Un tour dehors pour prendre l air et discuter tranquille.' },
-  { emoji: '🛋️', title: 'Canape', desc: 'Un film, une serie, ou juste parler jusqu a tard.' },
-  { emoji: '💻', title: 'Teletravail possible', desc: 'Si besoin, tu peux rester lundi ou mardi et bosser depuis la maison.' },
-  { emoji: '🎲', title: 'Jeux', desc: 'Quelques parties, un peu de mauvaise foi, rien d anormal.' },
-  { emoji: '🍷', title: 'Bonne ambiance', desc: 'Le but, c est surtout de passer un vrai bon moment.' },
-  { emoji: '🌙', title: 'Temps calme', desc: 'Pas de programme force. On profite, c est tout.' },
+  { emoji: '🥂', title: 'Apéro', desc: 'Locaux les vins tu goûteras, rhum arrangé tu savoureras.' },
+  { emoji: '🍝', title: 'Bon dîner', desc: 'La popote nous ferons, ou des pizzas nous prendrons.' },
+  { emoji: '🚶', title: 'Balade', desc: 'Tes chaussures tu prendras, marcher longtemps tu pourras.' },
+  { emoji: '🛋️', title: 'Canapé', desc: 'Un film tu regarderas, ou tard tu discuteras.' },
+  { emoji: '💻', title: 'Télétravail possible', desc: 'Lundi rester tu pourras, depuis la maison tu bosseras.' },
+  { emoji: '🎲', title: 'Jeux', desc: 'Mario Kart tu joueras, Monopoly tu gagneras.' },
+  { emoji: '🍷', title: 'Bonne ambiance', desc: 'Les bars tu exploreras, bonne vibe tu trouveras.' },
+  { emoji: '🌙', title: 'Temps calme', desc: 'Moment paisible tu vivras, Epilepchibre tu comprendras.' },
 ]
 
 const TAGS = [
   { label: '🛏️ chambre prete', color: 'bg-rose-50 text-rose-700' },
   { label: '🍳 petit dej reparateur', color: 'bg-amber-50 text-amber-700' },
   { label: '💻 fibre pour prolonger', color: 'bg-sky-50 text-sky-700' },
-  { label: '🐾 animaux diplomates acceptes', color: 'bg-emerald-50 text-emerald-700' },
-  { label: '🥘 repas maison selon elan', color: 'bg-orange-50 text-orange-700' },
+  { label: '🐾 animaux mignons acceptes', color: 'bg-emerald-50 text-emerald-700' },
   { label: '✨ duo seulement', color: 'bg-violet-50 text-violet-700' },
 ]
 

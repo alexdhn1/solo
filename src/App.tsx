@@ -81,15 +81,22 @@ function App() {
             <div className="inline-flex w-fit items-center rounded-full bg-rose-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-rose-700">
               Absence de supervision confirmée
             </div>
-            <h2 className="text-xl font-black text-stone-900">Un petit week-end simple, light en tete-à-tête </h2>
+            <h2 className="text-xl font-black text-stone-900">Un petit week-end en tete-à-tête </h2>
             <p className="text-sm leading-relaxed text-stone-700">
-              L'idee est simple : Les week-ends où Jenna travaille, la maison est libre pour recevoir une ou 2 personne a la fois.
-              L'idee n'est pas de faire un gros rassemblement. 
-              C'est plutot un moment simple, au calme, retrouvaille romantique,
-              avec possibilite de rester jusqu au lundi-mardi en teletravail si ca t arrange.
-              Detente, profiter de la maison et de son jardin, 
-              faire une balade dans les environs, ou ne rien faire du tout. 
-              Programme allégé 
+         Simple est l’idée : maison dispo quand Jenna bosse à côté,
+À une ou deux personnes, tranquille, sans foule agitée.
+
+Pas de grosse soirée, mais un moment posé,
+Romantique ou chill, juste pour se retrouver.
+
+Rester tu peux, lundi ou mardi inclus,
+Télétravailler au calme, sans stress ni chahut.
+
+Maison et jardin, profiter tu feras,
+Balade ou rien du tout, comme tu voudras.
+
+Programme léger, esprit libéré,
+Venir, se poser… comme chez Mémé
             </p>
           </div>
         </section>
