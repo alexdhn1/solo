@@ -48,6 +48,15 @@ function App() {
 
   return (
     <>
+      <a
+        href="https://alexdhn1.github.io/weekends-chez-alex/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed top-4 right-4 z-[10] inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur-md shadow-lg transition hover:bg-white/25"
+      >
+        👫 Week-end groupe
+      </a>
+
       <div
         className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${BACKGROUND_IMAGE.src})` }}
