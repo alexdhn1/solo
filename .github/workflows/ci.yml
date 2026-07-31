@@ -32,3 +32,32 @@ jobs:
 
       - name: Integration tests
         run: npm run test:integration
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_APPS_SCRIPT_URL: ${{ secrets.VITE_APPS_SCRIPT_URL }}
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests
+        run: npm run test:e2e
+        env:
+          # The e2e suite mocks every network call, the URL just needs to exist.
+          VITE_APPS_SCRIPT_URL: https://script.google.com/macros/s/e2e-placeholder/exec

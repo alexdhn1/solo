@@ -1,50 +1,57 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import type { SoloWeekendSlot, SoloReservationPayload } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-
-const JOURS_OPTIONS = [
-  'Vendredi → Dimanche',
-  'Vendredi → Lundi (+ 1 jour TT)',
-  'Vendredi → Mardi (+ 2 jours TT)',
-  'Samedi → Dimanche',
-  'Samedi → Lundi (+ TT lundi)',
-  'Samedi → Mardi (+ TT lun-mar)',
-]
+import { DEFAULT_JOURS, JOURS_OPTIONS, type JoursChoisis } from '@/features/solo-booking/content'
+import { firstErrorMessage, soloFormSchema } from '@/features/solo-booking/formSchema'
 
 interface Props {
   weekends: SoloWeekendSlot[]
+  /** Selection is owned by the parent so a refreshed list can reset it (C2). */
+  selectedRow: number | null
+  onSelectRow: (rowIndex: number | null) => void
   onSubmit: (payload: SoloReservationPayload) => Promise<void>
+  submitting: boolean
 }
 
-export function SoloForm({ weekends, onSubmit }: Props) {
-  const [selectedRow, setSelectedRow] = useState('')
+export function SoloForm({ weekends, selectedRow, onSelectRow, onSubmit, submitting }: Props) {
   const [nom, setNom] = useState('')
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
-  const [joursChoisis, setJoursChoisis] = useState(JOURS_OPTIONS[0])
-  const [submitting, setSubmitting] = useState(false)
+  const [joursChoisis, setJoursChoisis] = useState<JoursChoisis>(DEFAULT_JOURS)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Never trust a stale selection: the slot may have disappeared from the list.
+  const selectedSlot = weekends.find((w) => w.rowIndex === selectedRow) ?? null
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!selectedRow) return
 
-    setSubmitting(true)
-    try {
-      await onSubmit({
-        action: 'soloReservation',
-        rowIndex: parseInt(selectedRow, 10),
-        nom: nom.trim(),
-        email: email.trim(),
-        message: message.trim(),
-        joursChoisis,
-      })
-    } finally {
-      setSubmitting(false)
+    const parsed = soloFormSchema.safeParse({
+      rowIndex: selectedSlot?.rowIndex,
+      label: selectedSlot?.label,
+      nom,
+      email,
+      message,
+      joursChoisis,
+    })
+
+    if (!parsed.success) {
+      setError(firstErrorMessage(parsed.error))
+      return
     }
+
+    setError(null)
+    await onSubmit({ action: 'soloReservation', ...parsed.data })
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4">
+    <form
+      onSubmit={(e) => {
+        void handleSubmit(e)
+      }}
+      className="grid gap-4"
+      noValidate
+    >
       {/* Weekend select */}
       <div className="grid gap-1.5">
         <label htmlFor="weekend" className="text-xs font-bold uppercase tracking-wide text-gray-500">
@@ -54,8 +61,10 @@ export function SoloForm({ weekends, onSubmit }: Props) {
           <select
             id="weekend"
             required
-            value={selectedRow}
-            onChange={(e) => setSelectedRow(e.target.value)}
+            value={selectedSlot ? String(selectedSlot.rowIndex) : ''}
+            onChange={(e) => {
+              onSelectRow(e.target.value ? Number(e.target.value) : null)
+            }}
             className="w-full appearance-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 pr-10 text-sm text-gray-900 outline-none transition-colors focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-600/10"
           >
             <option value="">— Choisir un créneau —</option>
@@ -80,7 +89,9 @@ export function SoloForm({ weekends, onSubmit }: Props) {
           <select
             id="jours"
             value={joursChoisis}
-            onChange={(e) => setJoursChoisis(e.target.value)}
+            onChange={(e) => {
+              setJoursChoisis(e.target.value as JoursChoisis)
+            }}
             className="w-full appearance-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 pr-10 text-sm text-gray-900 outline-none transition-colors focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-600/10"
           >
             {JOURS_OPTIONS.map((opt) => (
@@ -106,7 +117,9 @@ export function SoloForm({ weekends, onSubmit }: Props) {
           required
           placeholder="Ex : Thomas"
           value={nom}
-          onChange={(e) => setNom(e.target.value)}
+          onChange={(e) => {
+            setNom(e.target.value)
+          }}
           className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-sm outline-none transition-colors focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-600/10"
         />
       </div>
@@ -122,7 +135,9 @@ export function SoloForm({ weekends, onSubmit }: Props) {
           required
           placeholder="thomas@exemple.com"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value)
+          }}
           className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-sm outline-none transition-colors focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-600/10"
         />
       </div>
@@ -136,19 +151,28 @@ export function SoloForm({ weekends, onSubmit }: Props) {
           id="message"
           placeholder="J'arrive vendredi soir, j'apporte du fromage 🧀"
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={(e) => {
+            setMessage(e.target.value)
+          }}
           className="min-h-[80px] resize-y rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-sm outline-none transition-colors focus:border-emerald-600 focus:bg-white focus:ring-2 focus:ring-emerald-600/10"
         />
       </div>
 
-      <Button
-        type="submit"
-        disabled={submitting || !selectedRow}
-        size="lg"
-        className="w-full bg-gradient-to-br from-emerald-700 to-emerald-500 py-4 text-base font-bold text-white hover:opacity-90"
-      >
-        {submitting ? '⏳ Réservation en cours…' : '🎉 Je réserve ce weekend solo !'}
-      </Button>
+      {/* The live region shares the button's grid cell so an empty error
+          message costs no vertical space (C9 without touching the layout). */}
+      <div>
+        <div role="status" aria-live="polite">
+          {error && <p className="mb-2 text-sm font-medium text-red-700">{error}</p>}
+        </div>
+        <Button
+          type="submit"
+          disabled={submitting || !selectedSlot}
+          size="lg"
+          className="w-full bg-linear-to-br from-emerald-700 to-emerald-500 py-4 text-base font-bold text-white hover:opacity-90"
+        >
+          {submitting ? '⏳ Réservation en cours…' : '🎉 Je réserve ce weekend solo !'}
+        </Button>
+      </div>
     </form>
   )
 }

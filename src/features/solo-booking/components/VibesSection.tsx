@@ -1,21 +1,4 @@
-const VIBES = [
-  { emoji: '🥂', title: 'Apéro', desc: 'Locaux les vins tu goûteras, rhum arrangé tu savoureras.' },
-  { emoji: '🍝', title: 'Bon dîner', desc: 'La popote nous ferons, ou des pizzas nous prendrons.' },
-  { emoji: '🚶', title: 'Balade', desc: 'Tes chaussures tu prendras, marcher longtemps tu pourras.' },
-  { emoji: '🛋️', title: 'Canapé', desc: 'Un film tu regarderas, ou tard tu discuteras.' },
-  { emoji: '💻', title: 'Télétravail possible', desc: 'Lundi rester tu pourras, depuis la maison tu bosseras.' },
-  { emoji: '🎲', title: 'Jeux', desc: 'Mario Kart tu joueras, Monopoly tu gagneras.' },
-  { emoji: '🍷', title: 'Bonne ambiance', desc: 'Les bars tu exploreras, bonne vibe tu trouveras.' },
-  { emoji: '🌙', title: 'Temps calme', desc: 'Moment paisible tu vivras, Epilepchibre tu comprendras.' },
-]
-
-const TAGS = [
-  { label: '🛏️ chambre prete', color: 'bg-rose-50 text-rose-700' },
-  { label: '🍳 petit dej reparateur', color: 'bg-amber-50 text-amber-700' },
-  { label: '💻 fibre pour prolonger', color: 'bg-sky-50 text-sky-700' },
-  { label: '🐾 animaux mignons acceptes', color: 'bg-emerald-50 text-emerald-700' },
-  { label: '✨ duo seulement', color: 'bg-violet-50 text-violet-700' },
-]
+import { TAGS, VIBES } from '@/features/solo-booking/content'
 
 export function VibesSection() {
   return (
@@ -34,7 +17,9 @@ export function VibesSection() {
             key={v.title}
             className="flex items-start gap-2 rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2.5"
           >
-            <span className="text-xl">{v.emoji}</span>
+            <span className="text-xl" aria-hidden="true">
+              {v.emoji}
+            </span>
             <div>
               <div className="text-sm font-semibold text-gray-800">{v.title}</div>
               <div className="text-xs text-gray-500">{v.desc}</div>

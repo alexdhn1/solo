@@ -20,11 +20,15 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Type safety (C1) */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src", "tests/setup.ts", "tests/msw", "tests/unit", "tests/integration"]
 }
