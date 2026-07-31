@@ -4,12 +4,17 @@
 // ============================================================
 // Installation :
 // 1. Colle ce fichier à la fin de code.gs
-// 2. REMPLACE l'ancienne fonction getSoloWeekends() par celle ci-dessous
-//    (supprime l'ancienne version pour éviter le doublon)
+// 2. Colle AUSSI code-solo-addition.gs : c'est lui qui contient désormais
+//    la version à jour de getSoloWeekends() (filtre dates passées inclus)
+//    ainsi que SOLO_CONFIG. Supprime toute ancienne copie de getSoloWeekends()
+//    pour éviter les doublons de définition.
 // 3. Ajoute le filtre isPastSlot() dans getWeekends() et dans la fonction
 //    utilisée par vacances.html (voir "MODIFIER" ci-dessous)
-// 4. Lance setupLot1() UNE FOIS depuis l'éditeur (autorise les droits demandés)
-// 5. Redéploie : Déployer → Gérer les déploiements → ✏️ Modifier →
+// 4. VÉRIFIE LOT1_CONFIG ci-dessous : nom de colonne de la date de fin pour
+//    chaque feuillet. archivePastRows() refuse de supprimer quoi que ce soit
+//    si l'en-tête ne correspond pas (garde-fou anti-suppression massive).
+// 5. Lance setupLot1() UNE FOIS depuis l'éditeur (autorise les droits demandés)
+// 6. Redéploie : Déployer → Gérer les déploiements → ✏️ Modifier →
 //    Version : "Nouvelle version" → Déployer
 //    ⚠️ Bien MODIFIER le déploiement existant (pas "Nouveau déploiement"),
 //    sinon l'URL /exec change et les sites cassent.
@@ -17,15 +22,18 @@
 
 // ------------------------------------------------------------
 // CONFIG ARCHIVAGE
-// Pour chaque feuillet : la colonne qui contient la DATE DE FIN
-// (A=1, B=2, C=3...). Vérifie que ça correspond à ta Sheet.
+// Pour chaque feuillet :
+//  - dateFinCol       : la colonne qui contient la DATE DE FIN (A=1, B=2, C=3...)
+//  - dateFinHeaders   : les libellés d'en-tête acceptés pour CETTE colonne.
+//    Si l'en-tête réel n'est pas dans la liste, le feuillet est IGNORÉ
+//    (log + abort) : on ne supprime jamais de lignes sur une colonne incertaine.
 // ------------------------------------------------------------
 const LOT1_CONFIG = {
   archiveSheetName: 'Archive',
   sheets: [
-    { name: 'Reservations', dateFinCol: 3 }, // colonne C = date de fin
-    { name: 'Solo',         dateFinCol: 3 }, // colonne C = date de fin
-    { name: 'Vacances',     dateFinCol: 3 }, // ⚠️ à vérifier selon ta structure
+    { name: 'Reservations', dateFinCol: 3, dateFinHeaders: ['Date fin', 'Date de fin', 'Fin'] },
+    { name: 'Solo',         dateFinCol: 3, dateFinHeaders: ['Date fin', 'Date de fin', 'Fin'] },
+    { name: 'Vacances',     dateFinCol: 3, dateFinHeaders: ['Date fin', 'Date de fin', 'Fin'] },
   ],
 };
 
@@ -33,9 +41,9 @@ const LOT1_CONFIG = {
 // HELPER — un créneau est "passé" si sa date de fin est avant aujourd'hui
 // ------------------------------------------------------------
 function isPastSlot(dateFin) {
-  var today = new Date();
+  const today = new Date();
   today.setHours(0, 0, 0, 0);
-  var fin = new Date(dateFin);
+  const fin = new Date(dateFin);
   fin.setHours(0, 0, 0, 0);
   return fin < today;
 }
@@ -59,67 +67,44 @@ function isPastSlot(dateFin) {
 // ============================================================
 
 // ============================================================
-// REMPLACE l'ancienne getSoloWeekends() par cette version
-// (identique + filtre des dates passées)
+// getSoloWeekends() : plus de copie ici.
+// La version canonique (filtre dates passées + conflits groupe factorisés)
+// vit dans code-solo-addition.gs. Ne recolle pas l'ancienne version :
+// deux définitions du même nom dans un projet Apps Script, c'est la dernière
+// chargée qui gagne — source de bugs silencieux.
 // ============================================================
-function getSoloWeekends() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  // Lire les dates occupées du feuillet Reservations (grands weekends)
-  const reservationsSheet = ss.getSheetByName('Reservations');
-  const reservationsData = reservationsSheet.getDataRange().getValues();
-  const busyDates = [];
-
-  for (var i = 1; i < reservationsData.length; i++) {
-    var status = reservationsData[i][3];
-    if (status === 'Réservé') {
-      var debut = new Date(reservationsData[i][1]);
-      var fin = new Date(reservationsData[i][2]);
-      // Ajouter une marge : vendredi avant au lundi après (groupe occupe la maison)
-      var margeDebut = new Date(debut);
-      margeDebut.setDate(margeDebut.getDate() - 1); // vendredi
-      var margeFin = new Date(fin);
-      margeFin.setDate(margeFin.getDate() + 1); // lundi
-      busyDates.push({ start: margeDebut, end: margeFin });
-    }
+// ------------------------------------------------------------
+// GARDE-FOU — l'en-tête de la colonne date de fin doit correspondre
+// à ce qu'on attend AVANT d'autoriser la moindre suppression.
+// Retourne true si le feuillet peut être archivé.
+// ------------------------------------------------------------
+function canArchiveSheet(sheet, cfg) {
+  const lastCol = sheet.getLastColumn();
+  if (cfg.dateFinCol > lastCol) {
+    Logger.log(
+      'ARCHIVAGE ABORTÉ [' + cfg.name + '] : colonne ' + cfg.dateFinCol +
+      ' hors du feuillet (' + lastCol + ' colonnes).'
+    );
+    return false;
   }
 
-  // Lire le feuillet Solo
-  var soloSheet = ss.getSheetByName(SOLO_CONFIG.sheetName);
-  if (!soloSheet) return [];
+  const header = String(sheet.getRange(1, cfg.dateFinCol).getValue()).trim();
+  const expected = cfg.dateFinHeaders || [];
+  const matches = expected.some(function (name) {
+    return name.toLowerCase() === header.toLowerCase();
+  });
 
-  var soloData = soloSheet.getDataRange().getValues();
-  var dispo = [];
-
-  for (var j = 1; j < soloData.length; j++) {
-    if (soloData[j][3] !== 'Disponible') continue;
-
-    var soloDebut = new Date(soloData[j][1]);
-    var soloFin = new Date(soloData[j][2]);
-
-    // LOT 1 : ne jamais proposer un créneau dont la date de fin est passée
-    if (isPastSlot(soloFin)) continue;
-
-    // Vérifier pas de conflit avec weekends groupe
-    var hasConflict = false;
-    for (var k = 0; k < busyDates.length; k++) {
-      if (!(soloFin < busyDates[k].start || soloDebut > busyDates[k].end)) {
-        hasConflict = true;
-        break;
-      }
-    }
-
-    if (!hasConflict) {
-      dispo.push({
-        rowIndex: j + 1,
-        label: soloData[j][0],
-        dateDebut: soloData[j][1],
-        dateFin: soloData[j][2]
-      });
-    }
+  if (!matches) {
+    Logger.log(
+      'ARCHIVAGE ABORTÉ [' + cfg.name + '] : en-tête colonne ' + cfg.dateFinCol +
+      ' = "' + header + '", attendu l\'un de [' + expected.join(', ') + ']. ' +
+      'Corrige LOT1_CONFIG ou la Sheet avant de relancer.'
+    );
+    return false;
   }
 
-  return dispo;
+  return true;
 }
 
 // ============================================================
@@ -127,24 +112,27 @@ function getSoloWeekends() {
 // Tourne chaque nuit via le trigger installé par setupLot1()
 // ============================================================
 function archivePastRows() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
 
   // Créer l'onglet Archive s'il n'existe pas
-  var archive = ss.getSheetByName(LOT1_CONFIG.archiveSheetName);
+  let archive = ss.getSheetByName(LOT1_CONFIG.archiveSheetName);
   if (!archive) {
     archive = ss.insertSheet(LOT1_CONFIG.archiveSheetName);
     archive.appendRow(['Feuillet source', 'Archivé le', '→ données de la ligne originale']);
   }
 
-  LOT1_CONFIG.sheets.forEach(function(cfg) {
-    var sheet = ss.getSheetByName(cfg.name);
+  LOT1_CONFIG.sheets.forEach(function (cfg) {
+    const sheet = ss.getSheetByName(cfg.name);
     if (!sheet) return; // feuillet absent : on ignore
 
-    var data = sheet.getDataRange().getValues();
-    var rowsToDelete = [];
+    // Garde-fou : jamais de suppression si la colonne n'est pas celle attendue
+    if (!canArchiveSheet(sheet, cfg)) return;
 
-    for (var i = 1; i < data.length; i++) {
-      var dateFin = data[i][cfg.dateFinCol - 1];
+    const data = sheet.getDataRange().getValues();
+    const rowsToDelete = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const dateFin = data[i][cfg.dateFinCol - 1];
       if (!dateFin) continue; // ligne sans date : on ne touche pas
       if (!isPastSlot(dateFin)) continue;
 
@@ -154,8 +142,12 @@ function archivePastRows() {
     }
 
     // Supprimer de bas en haut pour ne pas décaler les index
-    for (var d = rowsToDelete.length - 1; d >= 0; d--) {
+    for (let d = rowsToDelete.length - 1; d >= 0; d--) {
       sheet.deleteRow(rowsToDelete[d]);
+    }
+
+    if (rowsToDelete.length > 0) {
+      Logger.log('Archivage [' + cfg.name + '] : ' + rowsToDelete.length + ' ligne(s) déplacée(s).');
     }
   });
 }
@@ -166,7 +158,7 @@ function archivePastRows() {
 // ============================================================
 function setupLot1() {
   // Supprimer un éventuel ancien trigger pour éviter les doublons
-  ScriptApp.getProjectTriggers().forEach(function(t) {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === 'archivePastRows') {
       ScriptApp.deleteTrigger(t);
     }
