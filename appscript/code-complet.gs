@@ -295,7 +295,7 @@ function submitReservation(formData) {
   const cancelUrl = buildCancelUrl('groupe', rowIndex, email);
   let mailSent = true;
   try {
-    const hostEmail = CONFIG.hostEmail || Session.getActiveUser().getEmail();
+    const hostEmail = getHostEmail(); // cf. getHostEmail : getActiveUser() est vide en accès anonyme
     const ics = buildIcsAttachment({
       uidSeed: 'groupe-' + rowIndex + '-' + email,
       title: eventTitle,
@@ -1149,11 +1149,22 @@ function buildIcsAttachment(opts) {
 // ============================================================
 /** Email du propriétaire (config, sinon utilisateur courant). */
 function getHostEmail() {
+  if (CONFIG.hostEmail) return CONFIG.hostEmail;
+  // ⚠️ getActiveUser() renvoie '' quand le web app est appelé anonymement
+  // (accès « Tout le monde »), donc pour TOUTES les réservations réelles.
+  // getEffectiveUser() renvoie le compte sous l'autorité duquel le script
+  // s'exécute (le propriétaire), y compris en accès anonyme.
   try {
-    return CONFIG.hostEmail || Session.getActiveUser().getEmail() || '';
+    const effective = Session.getEffectiveUser().getEmail();
+    if (effective) return effective;
+  } catch (e) {
+    console.error('getEffectiveUser indisponible : ' + e);
+  }
+  try {
+    return Session.getActiveUser().getEmail() || '';
   } catch (e) {
     console.error('hostEmail indisponible : ' + e);
-    return CONFIG.hostEmail || '';
+    return '';
   }
 }
 
