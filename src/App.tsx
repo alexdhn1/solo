@@ -2,6 +2,7 @@ import { BackgroundLayer } from '@/features/solo-booking/components/BackgroundLa
 import { BookingPanel } from '@/features/solo-booking/components/BookingPanel'
 import { GroupSiteLink, PageHeader } from '@/features/solo-booking/components/PageHeader'
 import { HeroSection } from '@/features/solo-booking/components/HeroSection'
+import { PracticalInfoSection } from '@/features/solo-booking/components/PracticalInfoSection'
 import { useSoloBooking } from '@/features/solo-booking/hooks/useSoloBooking'
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
           onBookAnother={booking.reset}
           feedback={booking.feedback}
         />
+        <PracticalInfoSection />
       </div>
     </>
   )

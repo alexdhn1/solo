@@ -89,6 +89,49 @@ export const TAGS: readonly Tag[] = [
   { label: '✨ duo seulement', color: 'bg-violet-50 text-violet-700' },
 ]
 
+/* ---------------------------------------------------------------- *
+ * Infos pratiques (V2-C)
+ * Adresse et liens cartographiques : recherche par requête, aucune
+ * coordonnée GPS ni durée de trajet inventée.
+ * ---------------------------------------------------------------- */
+
+export const PRACTICAL_TITLE = '🧭 Infos pratiques'
+
+export const ADDRESS_LABEL = 'Adresse'
+export const ADDRESS_LINES: readonly string[] = [
+  '9 rue des Vendanges',
+  '41400 Saint-Georges-sur-Cher',
+]
+export const ADDRESS_FULL = '9 rue des Vendanges, 41400 Saint-Georges-sur-Cher'
+
+export const TRAVEL_NOTE =
+  'À ~2h de Paris en voiture, gare de Saint-Georges-sur-Cher desservie depuis Tours.'
+
+export interface MapLink {
+  readonly emoji: string
+  /** Explicit, self-describing label (no "cliquez ici"). */
+  readonly label: string
+  readonly href: string
+}
+
+export const MAP_LINKS: readonly MapLink[] = [
+  {
+    emoji: '🗺️',
+    label: 'Ouvrir l’adresse dans Google Maps',
+    href: 'https://www.google.com/maps/search/?api=1&query=9+rue+des+Vendanges+41400+Saint-Georges-sur-Cher',
+  },
+  {
+    emoji: '🍎',
+    label: 'Ouvrir l’adresse dans Apple Plans',
+    href: 'https://maps.apple.com/?q=9+rue+des+Vendanges+41400+Saint-Georges-sur-Cher',
+  },
+  {
+    emoji: '🚗',
+    label: 'Ouvrir l’adresse dans Waze',
+    href: 'https://waze.com/ul?q=9%20rue%20des%20Vendanges%2041400%20Saint-Georges-sur-Cher',
+  },
+]
+
 /** Allowed values of the "jours choisis" select — mirrored server-side (B3). */
 export const JOURS_OPTIONS = [
   'Vendredi → Dimanche',
