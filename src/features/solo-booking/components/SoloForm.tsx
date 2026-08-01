@@ -1,7 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import type { SoloWeekendSlot, SoloReservationPayload } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { DEFAULT_JOURS, JOURS_OPTIONS, type JoursChoisis } from '@/features/solo-booking/content'
+import {
+  DEFAULT_JOURS,
+  JOURS_OPTIONS,
+  SORTIES_BASE_URL,
+  SORTIES_SLOT_LABEL,
+  type JoursChoisis,
+} from '@/features/solo-booking/content'
 import { firstErrorMessage, soloFormSchema } from '@/features/solo-booking/formSchema'
 
 interface Props {
@@ -78,6 +84,16 @@ export function SoloForm({ weekends, selectedRow, onSelectRow, onSubmit, submitt
             ▾
           </span>
         </div>
+        {selectedSlot ? (
+          <a
+            href={`${SORTIES_BASE_URL}?du=${selectedSlot.dateDebut.slice(0, 10)}&au=${selectedSlot.dateFin.slice(0, 10)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-semibold text-emerald-700 underline-offset-2 hover:underline"
+          >
+            🗺️ {SORTIES_SLOT_LABEL} →
+          </a>
+        ) : null}
       </div>
 
       {/* Jours choisis */}

@@ -3,6 +3,8 @@ import {
   ADDRESS_LINES,
   MAP_LINKS,
   PRACTICAL_TITLE,
+  SORTIES_BASE_URL,
+  SORTIES_LINK_LABEL,
   TRAVEL_NOTE,
 } from '@/features/solo-booking/content'
 
@@ -50,6 +52,18 @@ export function PracticalInfoSection() {
           </li>
         ))}
       </ul>
+
+      <a
+        href={SORTIES_BASE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mb-4 flex items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 py-2.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50"
+      >
+        <span className="text-lg" aria-hidden="true">
+          🗺️
+        </span>
+        {SORTIES_LINK_LABEL}
+      </a>
 
       <p className="text-xs leading-relaxed text-gray-500">{TRAVEL_NOTE}</p>
     </section>

@@ -107,6 +107,12 @@ export const ADDRESS_FULL = '9 rue des Vendanges, 41400 Saint-Georges-sur-Cher'
 export const TRAVEL_NOTE =
   'À ~2h de Paris en voiture, gare de Saint-Georges-sur-Cher desservie depuis Tours.'
 
+/** Guide des sorties (page statique maintenue par Alex, mise à jour chaque semaine). */
+export const SORTIES_BASE_URL = 'https://alexdhn1.github.io/sorties-cher/'
+export const SORTIES_LINK_LABEL =
+  'Le guide des sorties d’Alex : châteaux, marchés, brocantes et idées autour de la maison'
+export const SORTIES_SLOT_LABEL = 'Voir quoi faire pendant ce séjour'
+
 export interface MapLink {
   readonly emoji: string
   /** Explicit, self-describing label (no "cliquez ici"). */
