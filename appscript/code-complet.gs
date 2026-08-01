@@ -12,10 +12,14 @@
 //    (supprime les autres fichiers .gs du projet s'il y en a,
 //    pour éviter les doublons de fonctions)
 // 2. ⚙️ Paramètres du projet → Script Properties → Add :
-//      API_TOKEN = un secret long aléatoire
-//    Reporte la même valeur dans common.js du repo weekends-chez-alex
+//      API_TOKEN     = un secret long aléatoire
+//      CANCEL_SECRET = un second secret long aléatoire (signature des liens
+//                      d'annulation ; repli sur API_TOKEN si absent)
+//    Reporte la valeur d'API_TOKEN dans common.js du repo weekends-chez-alex
 //    (à la place de 'CHANGE_ME_TOKEN')
 // 3. Lance setupLot1() une fois (réinstalle le trigger, sans doublon)
+// 3bis. Lance setupReminders() une fois (trigger quotidien des rappels J-3
+//    + création de la colonne « Rappel envoyé » sur Reservations et Solo)
 // 4. Déployer → Gérer les déploiements → ✏️ Modifier →
 //    Version « Nouvelle version » → Déployer
 //    ⚠️ MODIFIER le déploiement existant, pas « Nouveau déploiement »
@@ -31,6 +35,15 @@ const CONFIG = {
   maxLen: { nom: 100, email: 254, message: 1000 },
 };
 
+// URL /exec du déploiement PUBLIC (accès « Tout le monde »), utilisée pour
+// construire les liens d'annulation envoyés par mail.
+// ⚠️ Figée volontairement : ScriptApp.getService().getUrl() renvoie l'URL du
+// déploiement courant, or ce script en compte plusieurs — dont un @HEAD qui
+// exige une connexion Google. Un invité cliquant le lien tomberait alors sur
+// un écran de login. Si tu recrées un déploiement, mets cette valeur à jour.
+const WEBAPP_URL =
+  'https://script.google.com/macros/s/AKfycbyKDmf63_7GZ1abR4-0whXz1ZvYYiSYckTgXCFKYgGuBAlhuZu21iKVGSCqXMZKUc8/exec';
+
 // ============================================================
 // AUTH — token partagé avec index.html (Script Property API_TOKEN)
 // ============================================================
@@ -45,6 +58,11 @@ function checkToken(token) {
 function doGet(e) {
   try {
     const action = e && e.parameter && e.parameter.action;
+
+    // Annulation depuis un lien signé reçu par mail → page HTML (pas du JSON)
+    if (action === 'cancel') {
+      return handleCancelRequest(e.parameter || {});
+    }
 
     // Action SOLO : pas de token (le front React n'en envoie pas)
     if (action === 'getSoloWeekends') {
@@ -256,32 +274,36 @@ function submitReservation(formData) {
     lock.releaseLock();
   }
 
-  // -- Google Calendar (hors section critique, échec non bloquant) --
-  try {
-    const calendar   = CalendarApp.getDefaultCalendar();
-    const dateFinCal = new Date(dateFin);
-    dateFinCal.setDate(dateFinCal.getDate() + 1);
-    calendar.createAllDayEvent(
-      '🏠 ' + nom + ' — Weekend (' + nbPersonnes + ' pers.)',
-      dateDebut,
-      dateFinCal,
-      {
-        description:
-          '👤 Invité   : ' + nom         + '\n' +
-          '👥 Nb pers. : ' + nbPersonnes + '\n' +
-          '📧 Email    : ' + email       + '\n' +
-          '💬 Message  : ' + message
-      }
-    );
-  } catch (e) {
-    console.error('Erreur calendrier : ' + e);
-  }
+  const eventTitle = '🏠 ' + nom + ' — Weekend (' + nbPersonnes + ' pers.)';
+  const eventDescription =
+    '👤 Invité   : ' + nom         + '\n' +
+    '👥 Nb pers. : ' + nbPersonnes + '\n' +
+    '📧 Email    : ' + email       + '\n' +
+    '💬 Message  : ' + message;
+
+  // -- Google Calendar : invitation native à l'invité --
+  // (hors section critique, échec non bloquant)
+  createBookingEvent({
+    title: eventTitle,
+    dateDebut: dateDebut,
+    dateFin: dateFin,
+    description: eventDescription,
+    guestEmail: email,
+  });
 
   // -- Email de confirmation (échec non bloquant, message adapté) --
+  const cancelUrl = buildCancelUrl('groupe', rowIndex, email);
   let mailSent = true;
   try {
     const hostEmail = CONFIG.hostEmail || Session.getActiveUser().getEmail();
-    MailApp.sendEmail({
+    const ics = buildIcsAttachment({
+      uidSeed: 'groupe-' + rowIndex + '-' + email,
+      title: eventTitle,
+      dateDebut: dateDebut,
+      dateFin: dateFin,
+      description: 'Weekend chez ' + CONFIG.hostName + ' — ' + label,
+    });
+    const mail = {
       to:      email,
       replyTo: hostEmail,
       subject: '✅ Réservation confirmée — ' + label,
@@ -292,13 +314,31 @@ function submitReservation(formData) {
         (message ? 'Ton message : « ' + message + ' »\n\n' : '') +
         'Au programme : ripaille, châteaux, vins de Touraine, zoo de Beauval ' +
         'et si l\'ambiance est là… système son digne d\'Ibiza 🎶\n\n' +
+        infosPratiquesTexte() + '\n' +
+        cancelBlocTexte(cancelUrl) +
         'À très bientôt à St-Georges-sur-Cher !\n' +
         CONFIG.hostName
-    });
+    };
+    if (ics) {
+      mail.attachments = [ics];
+    }
+    MailApp.sendEmail(mail);
   } catch (e) {
     console.error('Erreur email : ' + e);
     mailSent = false;
   }
+
+  // -- Notification au propriétaire (échec non bloquant) --
+  notifyOwnerNewBooking({
+    type: 'groupe',
+    label: label,
+    nom: nom,
+    email: email,
+    message: message,
+    nbPersonnes: nbPersonnes,
+    joursChoisis: '',
+    rowIndex: rowIndex,
+  });
 
   return {
     success: true,
@@ -508,7 +548,7 @@ function submitSoloReservation(formData) {
     return soloError('CONFLICT_GROUP', 'Le serveur est occupé, réessaie dans quelques secondes.');
   }
 
-  let label;
+  let label, soloDebut, soloFin;
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SOLO_CONFIG.sheetName);
@@ -533,8 +573,8 @@ function submitSoloReservation(formData) {
       return soloError('ALREADY_BOOKED', "Désolé, ce créneau vient d'être pris ! Choisis une autre date.");
     }
 
-    const soloDebut = new Date(row[SOLO_CONFIG.col.dateDebut - 1]);
-    const soloFin = new Date(row[SOLO_CONFIG.col.dateFin - 1]);
+    soloDebut = new Date(row[SOLO_CONFIG.col.dateDebut - 1]);
+    soloFin = new Date(row[SOLO_CONFIG.col.dateFin - 1]);
 
     if (isPastSlot(soloFin)) {
       return soloError('PAST_SLOT', 'Ce créneau est déjà passé. Choisis une autre date !');
@@ -556,8 +596,33 @@ function submitSoloReservation(formData) {
     lock.releaseLock();
   }
 
-  // 4) Email de confirmation — hors section critique, échec non bloquant
-  const mailSent = sendSoloConfirmationEmail(input, label);
+  // 4) Agenda — invitation native à l'invité (échec non bloquant)
+  createBookingEvent({
+    title: '🌿 ' + input.nom + ' — Séjour solo',
+    dateDebut: soloDebut,
+    dateFin: soloFin,
+    description:
+      '👤 Invité   : ' + input.nom + '\n' +
+      '📧 Email    : ' + input.email + '\n' +
+      '🗓️ Jours    : ' + (input.joursChoisis || '(non précisé)') + '\n' +
+      '💬 Message  : ' + input.message,
+    guestEmail: input.email,
+  });
+
+  // 5) Email de confirmation — hors section critique, échec non bloquant
+  const mailSent = sendSoloConfirmationEmail(input, label, soloDebut, soloFin);
+
+  // 6) Notification au propriétaire (échec non bloquant)
+  notifyOwnerNewBooking({
+    type: 'solo',
+    label: label,
+    nom: input.nom,
+    email: input.email,
+    message: input.message,
+    nbPersonnes: '',
+    joursChoisis: input.joursChoisis,
+    rowIndex: input.rowIndex,
+  });
 
   return {
     success: true,
@@ -568,9 +633,10 @@ function submitSoloReservation(formData) {
 }
 
 /** Envoie l'email de confirmation solo. Retourne true si envoyé. */
-function sendSoloConfirmationEmail(input, label) {
+function sendSoloConfirmationEmail(input, label, dateDebut, dateFin) {
   try {
-    MailApp.sendEmail({
+    const cancelUrl = buildCancelUrl('solo', input.rowIndex, input.email);
+    const mail = {
       to: input.email,
       subject: '✅ Weekend solo confirmé — ' + label,
       body:
@@ -578,9 +644,25 @@ function sendSoloConfirmationEmail(input, label) {
         'C\'est confirmé pour le ' + label + ' en mode solo/tête-à-tête.\n' +
         (input.joursChoisis ? 'Jours choisis : ' + input.joursChoisis + '\n' : '') +
         (input.message ? 'Ton message : « ' + input.message + ' »\n' : '') +
-        '\nÀ très bientôt à St-Georges-sur-Cher !\n' +
+        '\n' + infosPratiquesTexte() + '\n' +
+        cancelBlocTexte(cancelUrl) +
+        'À très bientôt à St-Georges-sur-Cher !\n' +
         SOLO_CONFIG.hostName,
-    });
+    };
+
+    if (dateDebut && dateFin) {
+      const ics = buildIcsAttachment({
+        uidSeed: 'solo-' + input.rowIndex + '-' + input.email,
+        title: 'Séjour solo chez ' + SOLO_CONFIG.hostName,
+        dateDebut: dateDebut,
+        dateFin: dateFin,
+        description: 'Séjour solo — ' + label +
+          (input.joursChoisis ? ' (' + input.joursChoisis + ')' : ''),
+      });
+      if (ics) mail.attachments = [ics];
+    }
+
+    MailApp.sendEmail(mail);
     return true;
   } catch (e) {
     console.error('Erreur email solo : ' + e);
@@ -864,4 +946,637 @@ function generateSoloWeekends(startDate, endDate) {
     current.setDate(current.getDate() + 7);
   }
   return weekends;
+}
+
+// ============================================================
+// VAGUE 2 — CONFIGURATION COMMUNE
+// ============================================================
+// ⚠️ Aucune coordonnée GPS n'est stockée ici : uniquement des liens
+// cartographiques par recherche d'adresse (fonctionnent partout).
+const V2_CONFIG = {
+  adresse: '9 rue des Vendanges, 41400 Saint-Georges-sur-Cher',
+  mapsGoogle: 'https://www.google.com/maps/search/?api=1&query=9+rue+des+Vendanges+41400+Saint-Georges-sur-Cher',
+  mapsApple:  'https://maps.apple.com/?q=9+rue+des+Vendanges+41400+Saint-Georges-sur-Cher',
+  mapsWaze:   'https://waze.com/ul?q=9%20rue%20des%20Vendanges%2041400%20Saint-Georges-sur-Cher',
+  trajet: 'À ~2h de Paris en voiture ; gare de Saint-Georges-sur-Cher desservie depuis Tours.',
+  // En-tête de la colonne anti-doublon des rappels (A5)
+  reminderHeader: 'Rappel envoyé',
+  // Nombre de jours avant l'arrivée pour l'envoi du rappel
+  reminderDaysBefore: 3,
+};
+
+/**
+ * A2 — Bloc « infos pratiques » unique, réutilisé par tous les mails
+ * (confirmation groupe, confirmation solo, rappel J-3).
+ */
+function infosPratiquesTexte() {
+  return [
+    '— Infos pratiques —',
+    'Adresse : ' + V2_CONFIG.adresse,
+    'Google Maps : ' + V2_CONFIG.mapsGoogle,
+    'Apple Plans : ' + V2_CONFIG.mapsApple,
+    'Waze : ' + V2_CONFIG.mapsWaze,
+    V2_CONFIG.trajet,
+    '',
+  ].join('\n');
+}
+
+/** Bloc « annuler » ajouté en bas des mails (vide si l'URL est indisponible). */
+function cancelBlocTexte(cancelUrl) {
+  if (!cancelUrl) return '';
+  return 'Un empêchement ? Tu peux libérer le créneau en un clic :\n' + cancelUrl + '\n\n';
+}
+
+// ============================================================
+// A1 — Événement Calendar avec invitation native
+// ============================================================
+/**
+ * Crée l'événement journée entière et invite l'email fourni.
+ * Best-effort : toute erreur est loggée, jamais propagée.
+ * @return {string|null} l'id de l'événement, ou null en cas d'échec.
+ */
+function createBookingEvent(opts) {
+  try {
+    const calendar = CalendarApp.getDefaultCalendar();
+    // createAllDayEvent : la date de fin est exclusive → +1 jour
+    const dateFinCal = new Date(opts.dateFin);
+    dateFinCal.setDate(dateFinCal.getDate() + 1);
+
+    const options = {
+      description: opts.description || '',
+      location: V2_CONFIG.adresse,
+    };
+    if (opts.guestEmail) {
+      options.guests = opts.guestEmail;
+      options.sendInvites = true;
+    }
+
+    const event = calendar.createAllDayEvent(
+      opts.title,
+      new Date(opts.dateDebut),
+      dateFinCal,
+      options
+    );
+    return event ? event.getId() : null;
+  } catch (e) {
+    console.error('Erreur calendrier : ' + e);
+    return null;
+  }
+}
+
+/**
+ * Supprime best-effort l'événement d'une réservation annulée :
+ * on cherche sur la période un événement dont l'invité ou la description
+ * contient l'email. Aucune erreur n'est propagée.
+ */
+function deleteBookingEventBestEffort(dateDebut, dateFin, email) {
+  try {
+    if (!dateDebut || !dateFin || !email) return false;
+    const calendar = CalendarApp.getDefaultCalendar();
+    const from = new Date(dateDebut);
+    from.setDate(from.getDate() - 1);
+    const to = new Date(dateFin);
+    to.setDate(to.getDate() + 2);
+
+    const needle = String(email).toLowerCase();
+    const events = calendar.getEvents(from, to);
+    let deleted = false;
+
+    for (let i = 0; i < events.length; i++) {
+      const ev = events[i];
+      let match = String(ev.getDescription() || '').toLowerCase().indexOf(needle) !== -1;
+      if (!match) {
+        try {
+          const guests = ev.getGuestList();
+          for (let g = 0; g < guests.length; g++) {
+            if (String(guests[g].getEmail() || '').toLowerCase() === needle) {
+              match = true;
+              break;
+            }
+          }
+        } catch (inner) {
+          // getGuestList peut échouer selon les droits : on ignore
+        }
+      }
+      if (match) {
+        ev.deleteEvent();
+        deleted = true;
+      }
+    }
+    return deleted;
+  } catch (e) {
+    console.error('Suppression événement (best-effort) échouée : ' + e);
+    return false;
+  }
+}
+
+// ============================================================
+// A1 — Génération du fichier .ics (pièce jointe)
+// ============================================================
+/** Échappe les caractères réservés d'un champ texte iCalendar. */
+function icsEscapeText(value) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\r\n|\n|\r/g, '\\n');
+}
+
+/** Format DATE iCalendar (YYYYMMDD) en heure locale du script. */
+function icsDateValue(date) {
+  return Utilities.formatDate(new Date(date), Session.getScriptTimeZone(), 'yyyyMMdd');
+}
+
+/** Format DATE-TIME UTC iCalendar (YYYYMMDDTHHMMSSZ). */
+function icsStampValue(date) {
+  return Utilities.formatDate(new Date(date), 'UTC', "yyyyMMdd'T'HHmmss'Z'");
+}
+
+/**
+ * Construit la pièce jointe .ics (événement journée entière, METHOD:PUBLISH).
+ * @return {Object|null} objet attachment MailApp, ou null si échec.
+ */
+function buildIcsAttachment(opts) {
+  try {
+    const dtStart = icsDateValue(opts.dateDebut);
+    // DTEND est exclusif pour un événement journée entière → date de fin + 1
+    const finExclusive = new Date(opts.dateFin);
+    finExclusive.setDate(finExclusive.getDate() + 1);
+    const dtEnd = icsDateValue(finExclusive);
+
+    // UID stable et unique : dérivé de la réservation (pas d'aléatoire)
+    const uid = Utilities.base64EncodeWebSafe(
+      Utilities.computeDigest(
+        Utilities.DigestAlgorithm.SHA_256,
+        String(opts.uidSeed) + '|' + dtStart + '|' + dtEnd
+      )
+    ).replace(/=+$/, '') + '@weekends-chez-alex';
+
+    const lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//weekends-chez-alex//reservation//FR',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      'UID:' + uid,
+      'DTSTAMP:' + icsStampValue(new Date()),
+      'DTSTART;VALUE=DATE:' + dtStart,
+      'DTEND;VALUE=DATE:' + dtEnd,
+      'SUMMARY:' + icsEscapeText(opts.title),
+      'LOCATION:' + icsEscapeText(V2_CONFIG.adresse),
+      'DESCRIPTION:' + icsEscapeText(
+        (opts.description || '') + '\n' + V2_CONFIG.adresse + '\n' + V2_CONFIG.mapsGoogle
+      ),
+      'TRANSP:TRANSPARENT',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ];
+
+    return {
+      fileName: 'weekend-st-georges.ics',
+      content: lines.join('\r\n') + '\r\n',
+      mimeType: 'text/calendar',
+    };
+  } catch (e) {
+    console.error('Génération .ics échouée : ' + e);
+    return null;
+  }
+}
+
+// ============================================================
+// A3 — Notification au propriétaire
+// ============================================================
+/** Email du propriétaire (config, sinon utilisateur courant). */
+function getHostEmail() {
+  try {
+    return CONFIG.hostEmail || Session.getActiveUser().getEmail() || '';
+  } catch (e) {
+    console.error('hostEmail indisponible : ' + e);
+    return CONFIG.hostEmail || '';
+  }
+}
+
+/** Prévient l'hôte d'une nouvelle réservation. Échec non bloquant. */
+function notifyOwnerNewBooking(info) {
+  try {
+    const hostEmail = getHostEmail();
+    if (!hostEmail) {
+      console.error('Notification propriétaire ignorée : email hôte inconnu.');
+      return false;
+    }
+    MailApp.sendEmail({
+      to: hostEmail,
+      replyTo: info.email,
+      subject: '📬 Nouvelle réservation ' + info.type + ' — ' + info.label,
+      body:
+        'Nouvelle réservation enregistrée.\n\n' +
+        'Type      : ' + info.type + '\n' +
+        'Créneau   : ' + info.label + '\n' +
+        'Ligne     : ' + info.rowIndex + '\n' +
+        'Nom       : ' + info.nom + '\n' +
+        'Email     : ' + info.email + '\n' +
+        (info.nbPersonnes ? 'Nb pers.  : ' + info.nbPersonnes + '\n' : '') +
+        (info.joursChoisis ? 'Jours     : ' + info.joursChoisis + '\n' : '') +
+        'Message   : ' + (info.message || '(aucun)') + '\n',
+    });
+    return true;
+  } catch (e) {
+    console.error('Erreur notification propriétaire : ' + e);
+    return false;
+  }
+}
+
+/** Prévient l'hôte d'une annulation. Échec non bloquant. */
+function notifyOwnerCancellation(info) {
+  try {
+    const hostEmail = getHostEmail();
+    if (!hostEmail) return false;
+    MailApp.sendEmail({
+      to: hostEmail,
+      subject: '🚫 Annulation ' + info.type + ' — ' + info.label,
+      body:
+        'Une réservation vient d\'être annulée via le lien d\'annulation.\n\n' +
+        'Type    : ' + info.type + '\n' +
+        'Créneau : ' + info.label + '\n' +
+        'Ligne   : ' + info.rowIndex + '\n' +
+        'Nom     : ' + (info.nom || '(inconnu)') + '\n' +
+        'Email   : ' + info.email + '\n\n' +
+        'Le créneau est de nouveau « Disponible ».\n',
+    });
+    return true;
+  } catch (e) {
+    console.error('Erreur notification annulation : ' + e);
+    return false;
+  }
+}
+
+// ============================================================
+// A4 — Lien d'annulation signé
+// ============================================================
+/**
+ * Spécification d'un feuillet réservable, pour les traitements génériques
+ * (annulation, rappels). Les indices de colonnes sont 1-indexés.
+ */
+function getBookingSpec(type) {
+  if (type === 'groupe') {
+    return {
+      type: 'groupe',
+      sheetName: CONFIG.sheetName,
+      label: 1, dateDebut: 2, dateFin: 3, statut: 4,
+      nom: 5, email: 6, message: 7, jours: 0, dateResa: 8,
+      lastCol: 8,
+    };
+  }
+  if (type === 'solo') {
+    return {
+      type: 'solo',
+      sheetName: SOLO_CONFIG.sheetName,
+      label: SOLO_CONFIG.col.label,
+      dateDebut: SOLO_CONFIG.col.dateDebut,
+      dateFin: SOLO_CONFIG.col.dateFin,
+      statut: SOLO_CONFIG.col.statut,
+      nom: SOLO_CONFIG.col.nom,
+      email: SOLO_CONFIG.col.email,
+      message: SOLO_CONFIG.col.message,
+      jours: SOLO_CONFIG.col.jours,
+      dateResa: SOLO_CONFIG.col.dateResa,
+      lastCol: SOLO_CONFIG.col.dateResa,
+    };
+  }
+  return null;
+}
+
+/** Secret HMAC : CANCEL_SECRET, avec repli sur API_TOKEN. */
+function getCancelSecret() {
+  const props = PropertiesService.getScriptProperties();
+  return props.getProperty('CANCEL_SECRET') || props.getProperty('API_TOKEN') || '';
+}
+
+/** Signature HMAC-SHA256 base64 web-safe du triplet (type,row,email). */
+function computeCancelSignature(type, rowIndex, email) {
+  const secret = getCancelSecret();
+  if (!secret) return '';
+  const payload = String(type) + '|' + String(rowIndex) + '|' + String(email).trim().toLowerCase();
+  const raw = Utilities.computeHmacSha256Signature(payload, secret);
+  return Utilities.base64EncodeWebSafe(raw).replace(/=+$/, '');
+}
+
+/** Comparaison à temps constant de deux chaînes. */
+function constantTimeEquals(a, b) {
+  const sa = String(a === null || a === undefined ? '' : a);
+  const sb = String(b === null || b === undefined ? '' : b);
+  if (sa.length !== sb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < sa.length; i++) {
+    diff |= sa.charCodeAt(i) ^ sb.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+/** URL complète d'annulation, ou '' si indisponible (secret ou URL manquants). */
+function buildCancelUrl(type, rowIndex, email) {
+  try {
+    const sig = computeCancelSignature(type, rowIndex, email);
+    if (!sig) {
+      console.error('Lien d\'annulation non généré : ni CANCEL_SECRET ni API_TOKEN.');
+      return '';
+    }
+    // URL figée en priorité (cf. WEBAPP_URL) ; getUrl() en repli seulement.
+    let base = WEBAPP_URL;
+    if (!base) {
+      try { base = ScriptApp.getService().getUrl(); } catch (urlErr) { base = ''; }
+    }
+    if (!base) return '';
+    return base +
+      '?action=cancel' +
+      '&type=' + encodeURIComponent(type) +
+      '&row=' + encodeURIComponent(String(rowIndex)) +
+      '&email=' + encodeURIComponent(email) +
+      '&sig=' + encodeURIComponent(sig);
+  } catch (e) {
+    console.error('buildCancelUrl : ' + e);
+    return '';
+  }
+}
+
+/** Échappement HTML minimal pour la page de retour. */
+function escapeHtmlText(value) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Page HTML de retour après un clic sur le lien d'annulation. */
+function cancelHtmlPage(titre, corps) {
+  const html =
+    '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;' +
+    'max-width:520px;margin:48px auto;padding:24px;line-height:1.5;' +
+    'border:1px solid #e0e0e0;border-radius:12px">' +
+    '<h1 style="font-size:20px;margin:0 0 12px">' + escapeHtmlText(titre) + '</h1>' +
+    '<p style="margin:0;color:#444">' + escapeHtmlText(corps) + '</p>' +
+    '</div>';
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Annulation — Weekends chez ' + CONFIG.hostName);
+}
+
+/**
+ * Traite ?action=cancel&type=…&row=…&email=…&sig=…
+ * Renvoie toujours une page HTML lisible. Idempotent.
+ */
+function handleCancelRequest(params) {
+  try {
+    const type = String(params.type || '').trim();
+    const rowIndex = parseInt(params.row, 10);
+    const email = String(params.email || '').trim();
+    const sig = String(params.sig || '').trim();
+
+    const spec = getBookingSpec(type);
+    if (!spec || !rowIndex || isNaN(rowIndex) || rowIndex < 2 || !email || !sig) {
+      return cancelHtmlPage('Lien invalide',
+        'Ce lien d\'annulation n\'est pas valide. Réponds simplement à l\'email de confirmation.');
+    }
+
+    const expected = computeCancelSignature(type, rowIndex, email);
+    if (!expected || !constantTimeEquals(expected, sig)) {
+      return cancelHtmlPage('Lien invalide',
+        'Ce lien d\'annulation n\'est pas valide ou a expiré. Réponds simplement à l\'email de confirmation.');
+    }
+
+    const lock = LockService.getScriptLock();
+    try {
+      lock.waitLock(10000);
+    } catch (e) {
+      console.error('LockService (annulation) : verrou non obtenu — ' + e);
+      return cancelHtmlPage('Serveur occupé',
+        'Le serveur est occupé, réessaie dans quelques secondes.');
+    }
+
+    let label = '', nom = '', dateDebut = null, dateFin = null, libere = false;
+    try {
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(spec.sheetName);
+      if (!sheet || rowIndex > sheet.getLastRow()) {
+        return cancelHtmlPage('Créneau introuvable',
+          'Ce créneau n\'existe plus. Il n\'y a rien à annuler.');
+      }
+
+      const row = sheet.getRange(rowIndex, 1, 1, spec.lastCol).getValues()[0];
+      label = String(row[spec.label - 1] || '');
+      nom = String(row[spec.nom - 1] || '');
+      dateDebut = row[spec.dateDebut - 1] ? new Date(row[spec.dateDebut - 1]) : null;
+      dateFin = row[spec.dateFin - 1] ? new Date(row[spec.dateFin - 1]) : null;
+      const rowEmail = String(row[spec.email - 1] || '').trim().toLowerCase();
+      const statut = row[spec.statut - 1];
+
+      // Idempotence : déjà libéré → message neutre, pas une erreur
+      if (statut !== 'Réservé' || !rowEmail) {
+        return cancelHtmlPage('Créneau déjà libre',
+          'Ce créneau est déjà libre — rien à faire de plus.');
+      }
+      if (rowEmail !== email.toLowerCase()) {
+        return cancelHtmlPage('Créneau déjà libre',
+          'Ce créneau est déjà libre — rien à faire de plus.');
+      }
+
+      sheet.getRange(rowIndex, spec.statut).setValue('Disponible');
+      sheet.getRange(rowIndex, spec.nom).setValue('');
+      sheet.getRange(rowIndex, spec.email).setValue('');
+      sheet.getRange(rowIndex, spec.message).setValue('');
+      if (spec.jours) sheet.getRange(rowIndex, spec.jours).setValue('');
+      sheet.getRange(rowIndex, spec.dateResa).setValue('');
+
+      // Réinitialise le marqueur de rappel si la colonne existe déjà
+      const reminderCol = findReminderColumn(sheet);
+      if (reminderCol) sheet.getRange(rowIndex, reminderCol).setValue('');
+
+      SpreadsheetApp.flush();
+      libere = true;
+    } finally {
+      lock.releaseLock();
+    }
+
+    if (libere) {
+      // Best-effort, hors section critique
+      deleteBookingEventBestEffort(dateDebut, dateFin, email);
+      notifyOwnerCancellation({
+        type: spec.type, label: label, nom: nom, email: email, rowIndex: rowIndex,
+      });
+    }
+
+    return cancelHtmlPage('Réservation annulée',
+      'C\'est fait : le créneau « ' + label + ' » est de nouveau disponible. ' +
+      'Merci d\'avoir prévenu !');
+  } catch (err) {
+    console.error('handleCancelRequest error: ' + err);
+    return cancelHtmlPage('Erreur',
+      'Une erreur est survenue. Réponds simplement à l\'email de confirmation.');
+  }
+}
+
+// ============================================================
+// A5 — Rappel automatique J-3
+// ============================================================
+/** Index (1-indexé) de la colonne « Rappel envoyé », ou 0 si absente. */
+function findReminderColumn(sheet) {
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return 0;
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const wanted = V2_CONFIG.reminderHeader.toLowerCase();
+  for (let c = 0; c < headers.length; c++) {
+    if (String(headers[c] || '').trim().toLowerCase() === wanted) return c + 1;
+  }
+  return 0;
+}
+
+/**
+ * Retourne l'index de la colonne « Rappel envoyé », en la créant au bout
+ * du feuillet si elle n'existe pas. N'écrase jamais une colonne existante :
+ * on n'écrit que dans une colonne dont l'en-tête est vide, sinon on ajoute.
+ */
+function ensureReminderColumn(sheet) {
+  const existing = findReminderColumn(sheet);
+  if (existing) return existing;
+
+  const target = sheet.getLastColumn() + 1;
+  if (target > sheet.getMaxColumns()) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), target - sheet.getMaxColumns());
+  }
+  const cell = sheet.getRange(1, target);
+  if (String(cell.getValue() || '').trim() !== '') {
+    Logger.log('Colonne rappel non créée : la cellule d\'en-tête ' + target + ' n\'est pas vide.');
+    return 0;
+  }
+  cell.setValue(V2_CONFIG.reminderHeader);
+  cell.setFontWeight('bold');
+  return target;
+}
+
+/** Nombre de jours calendaires entre aujourd'hui et une date (minuit à minuit). */
+function daysUntil(date) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(date);
+  target.setHours(0, 0, 0, 0);
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
+}
+
+/**
+ * Envoie les rappels J-3 pour les réservations « Réservé ».
+ * Anti-doublon via la colonne « Rappel envoyé ». Idempotent.
+ * Déclenché quotidiennement par le trigger installé par setupReminders().
+ */
+function sendReminders() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const types = ['groupe', 'solo'];
+  let sent = 0;
+
+  types.forEach(function (type) {
+    const spec = getBookingSpec(type);
+    const sheet = ss.getSheetByName(spec.sheetName);
+    if (!sheet) return;
+
+    const reminderCol = ensureReminderColumn(sheet);
+    if (!reminderCol) {
+      Logger.log('Rappels [' + type + '] ignorés : colonne « ' + V2_CONFIG.reminderHeader + ' » indisponible.');
+      return;
+    }
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return;
+    const width = Math.max(spec.lastCol, reminderCol);
+    const data = sheet.getRange(2, 1, lastRow - 1, width).getValues();
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const rowIndex = i + 2;
+
+      if (row[spec.statut - 1] !== 'Réservé') continue;
+      if (String(row[reminderCol - 1] || '').trim() !== '') continue; // déjà envoyé
+
+      const dateDebutRaw = row[spec.dateDebut - 1];
+      if (!dateDebutRaw) continue;
+      const dateDebut = new Date(dateDebutRaw);
+      if (isNaN(dateDebut.getTime())) continue;
+      if (daysUntil(dateDebut) !== V2_CONFIG.reminderDaysBefore) continue;
+
+      const email = String(row[spec.email - 1] || '').trim();
+      if (!isValidEmail(email)) continue;
+
+      const label = String(row[spec.label - 1] || '');
+      const nom = String(row[spec.nom - 1] || '');
+      const jours = spec.jours ? String(row[spec.jours - 1] || '') : '';
+
+      const ok = sendReminderEmail({
+        type: type, email: email, nom: nom, label: label,
+        jours: jours, rowIndex: rowIndex,
+      });
+
+      if (ok) {
+        sheet.getRange(rowIndex, reminderCol).setValue(new Date());
+        sent++;
+      }
+    }
+  });
+
+  SpreadsheetApp.flush();
+  Logger.log('Rappels J-' + V2_CONFIG.reminderDaysBefore + ' : ' + sent + ' email(s) envoyé(s).');
+  return sent;
+}
+
+/** Envoie un email de rappel. Retourne true si parti. */
+function sendReminderEmail(info) {
+  try {
+    const cancelUrl = buildCancelUrl(info.type, info.rowIndex, info.email);
+    const hostEmail = getHostEmail();
+    const mail = {
+      to: info.email,
+      subject: '⏰ J-' + V2_CONFIG.reminderDaysBefore + ' — ' + info.label,
+      body:
+        'Salut ' + (info.nom || '') + ' !\n\n' +
+        'Petit rappel : c\'est dans ' + V2_CONFIG.reminderDaysBefore +
+        ' jours — ' + info.label + '.\n' +
+        (info.jours ? 'Jours prévus : ' + info.jours + '\n' : '') +
+        '\n' + infosPratiquesTexte() + '\n' +
+        cancelBlocTexte(cancelUrl) +
+        'À très vite !\n' +
+        CONFIG.hostName,
+    };
+    if (hostEmail) mail.replyTo = hostEmail;
+    MailApp.sendEmail(mail);
+    return true;
+  } catch (e) {
+    console.error('Erreur email rappel (ligne ' + info.rowIndex + ') : ' + e);
+    return false;
+  }
+}
+
+/**
+ * À lancer UNE FOIS : (ré)installe le trigger quotidien des rappels (9h),
+ * sans doublon, et crée les colonnes « Rappel envoyé » manquantes.
+ */
+function setupReminders() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'sendReminders') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+
+  ScriptApp.newTrigger('sendReminders')
+    .timeBased()
+    .everyDays(1)
+    .atHour(9)
+    .create();
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  ['groupe', 'solo'].forEach(function (type) {
+    const spec = getBookingSpec(type);
+    const sheet = ss.getSheetByName(spec.sheetName);
+    if (sheet) ensureReminderColumn(sheet);
+  });
+
+  Logger.log('Rappels installés : trigger quotidien à 9h + colonnes « ' +
+    V2_CONFIG.reminderHeader + ' » vérifiées.');
 }
