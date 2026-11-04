@@ -52,5 +52,13 @@
     "vite": "^8.3.5",
     "vitest": "^4.1.12",
     "vitest-axe": "^0.1.0"
+  },
+  "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.4"
+    },
+    "@ts-morph/common": {
+      "minimatch": "^11.0.4"
+    }
   }
 }
